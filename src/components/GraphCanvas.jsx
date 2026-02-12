@@ -1,241 +1,388 @@
-import { useState } from "react";
-import { bfs, bfsFullGraph } from "../algorithms/bfs";
+import { useState, useRef, useEffect } from "react";
+import { bfsFullGraph } from "../algorithms/bfs";
+import { dfsFullGraph } from "../algorithms/dfs";
+import { dijkstra } from "../algorithms/dijkstra";
 
 export default function GraphCanvas() {
-
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [newEdgeWeight, setNewEdgeWeight] = useState(1);
 
   const [visitedOrder, setVisitedOrder] = useState([]);
   const [currentStep, setCurrentStep] = useState(-1);
-  const [queueState, setQueueState] = useState([]);
+  const [stackOrQueue, setStackOrQueue] = useState([]);
   const [visitedSoFar, setVisitedSoFar] = useState([]);
-  const [currentComponent, setCurrentComponent] = useState(-1);
+  const [distances, setDistances] = useState({});
+  const [parents, setParents] = useState({});
+  const [algorithm, setAlgorithm] = useState("bfs");
   const [speed, setSpeed] = useState(800);
+
+  const intervalRef = useRef(null);
+  const [shortestPath, setShortestPath] = useState([]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const resetVisualization = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setVisitedOrder([]);
+    setVisitedSoFar([]);
+    setStackOrQueue([]);
+    setCurrentStep(-1);
+    setDistances({});
+    setParents({});
+    setShortestPath([]);
+  };
+
+  const clearGraph = () => {
+    resetVisualization();
+    setNodes([]);
+    setEdges([]);
+    setSelectedNode(null);
+  };
 
   const handleCanvasClick = (e) => {
     if (e.target !== e.currentTarget) return;
-
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const newNode = {
-      id: nodes.length,
-      x,
-      y
-    };
+    const newId =
+      nodes.length > 0
+        ? Math.max(...nodes.map((n) => n.id)) + 1
+        : 0;
 
-    setNodes([...nodes, newNode]);
+    setNodes([...nodes, { id: newId, x, y }]);
   };
 
   const handleNodeClick = (nodeId) => {
     if (selectedNode === null) {
       setSelectedNode(nodeId);
     } else if (selectedNode !== nodeId) {
-      const newEdge = { from: selectedNode, to: nodeId };
+      const newEdge = {
+        from: selectedNode,
+        to: nodeId,
+        weight: newEdgeWeight,
+      };
       setEdges([...edges, newEdge]);
       setSelectedNode(null);
     }
   };
 
-  const runBFS = () => {
-  if (nodes.length === 0) return;
+  const startVisualization = () => {
+    resetVisualization();
+    if (nodes.length === 0) return;
 
-  setVisitedSoFar([]);
-  setQueueState([]);
-  setCurrentStep(-1);
+    let steps = [];
 
-  const steps = bfs(0, nodes, edges);
+    if (algorithm === "bfs") {
+      steps = bfsFullGraph(nodes, edges);
+      animateMultiComponent(steps);
+    } else if (algorithm === "dfs") {
+      steps = dfsFullGraph(nodes, edges);
+      animateMultiComponent(steps);
+    } else if (algorithm === "dijkstra") {
+      if (selectedNode === null) {
+        alert("Select starting node first");
+        return;
+      }
+      const result = dijkstra(selectedNode, nodes, edges);
+      steps = result.steps;
+      animateDijkstra(steps, result.dist, result.prev);
+    }
+  };
+
+  const animateMultiComponent = (steps) => {
+    setVisitedOrder(steps);
+    setVisitedSoFar([]);
+
+    let stepIndex = 0;
+    let componentIndex = -1;
+    let lastComponentStart = null;
+
+    intervalRef.current = setInterval(() => {
+      if (stepIndex >= steps.length) {
+  clearInterval(intervalRef.current);
+  intervalRef.current = null;
+
+  setDistances(finalDist);
+  setParents(finalPrev);
+
+  // 🔥 Build shortest path from selectedNode
+  const path = [];
+  let current = selectedNode;
+
+  while (current !== undefined && current !== null) {
+    path.unshift(current);
+    current = finalPrev[current];
+  }
+
+  setShortestPath(path);
+  return;
+}
+
+      const step = steps[stepIndex];
+
+      if (step.componentStart !== lastComponentStart) {
+        componentIndex++;
+        lastComponentStart = step.componentStart;
+        setVisitedSoFar((prev) => [...prev, []]);
+      }
+
+      setCurrentStep(stepIndex);
+      setStackOrQueue(step.stack || step.queue || []);
+
+      setVisitedSoFar((prev) => {
+        const updated = [...prev];
+        updated[componentIndex] = [
+          ...(updated[componentIndex] || []),
+          step.current,
+        ];
+        return updated;
+      });
+
+      stepIndex++;
+    }, speed);
+  };
+
+const animateDijkstra = (steps, finalDist, finalPrev) => {
   setVisitedOrder(steps);
+  setDistances({});
+  setParents({});
+  setShortestPath([]);   // clear previous path
 
   let stepIndex = 0;
 
-  const interval = setInterval(() => {
-
+  intervalRef.current = setInterval(() => {
     if (stepIndex >= steps.length) {
-      clearInterval(interval);
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+
+      // Set final results
+      setDistances(finalDist);
+      setParents(finalPrev);
+
+      // 🔥 Find a valid target (farthest reachable node)
+      let target = null;
+      let maxDist = -1;
+
+      for (let node in finalDist) {
+        if (
+          finalDist[node] !== Infinity &&
+          finalDist[node] > maxDist
+        ) {
+          maxDist = finalDist[node];
+          target = Number(node);
+        }
+      }
+
+      // 🔥 Reconstruct shortest path
+      const path = [];
+      let current = target;
+
+      while (current !== undefined && current !== null) {
+        path.unshift(current);
+        current = finalPrev[current];
+      }
+
+      setShortestPath(path);
       return;
     }
 
     const step = steps[stepIndex];
 
-    if (!step) {
-      clearInterval(interval);
-      return;
-    }
-
     setCurrentStep(stepIndex);
-    setQueueState(step.queue || []);
-
-    setVisitedSoFar(prev => [
-      ...prev,
-      step.current
-    ]);
+    setStackOrQueue(step.pq || []);
+    setDistances(step.dist || {});
+    setParents(step.prev || {});
 
     stepIndex++;
-
   }, speed);
 };
 
-    const runFullBFS = () => {
+  const currentNode =
+    currentStep >= 0 && currentStep < visitedOrder.length
+      ? visitedOrder[currentStep].current
+      : null;
 
-  if (nodes.length === 0) return;
+  const getNodeStyle = (nodeId) => {
+    const isVisited = visitedSoFar.flat().includes(nodeId);
+    const isCurrent = currentNode === nodeId;
+    if (shortestPath.includes(nodeId)) {
+  return "bg-blue-600 text-white ring-4 ring-blue-300";
+}
+    const isInFrontier = stackOrQueue.some((item) =>
+      typeof item === "number"
+        ? item === nodeId
+        : item.node === nodeId
+    );
 
-  setVisitedSoFar([]);
-  setQueueState([]);
-  setCurrentStep(-1);
+    if (isCurrent)
+      return "bg-green-600 text-white ring-4 ring-green-300";
+    if (isVisited)
+      return "bg-emerald-700 text-white";
+    if (isInFrontier)
+      return "bg-yellow-500 text-black border-4 border-orange-400";
+    if (selectedNode === nodeId)
+      return "bg-red-600 text-white ring-2 ring-red-300";
 
-  const steps = bfsFullGraph(nodes, edges);
-  setVisitedOrder(steps);
-
-  let stepIndex = 0;
-  let componentIndex = -1;
-  let lastComponentStart = null;
-
-  const interval = setInterval(() => {
-
-    if (stepIndex >= steps.length) {
-      clearInterval(interval);
-      return;
-    }
-
-    const step = steps[stepIndex];
-
-    // If new component starts
-    if (step.componentStart !== lastComponentStart) {
-      componentIndex++;
-      lastComponentStart = step.componentStart;
-
-      setVisitedSoFar(prev => [
-        ...prev,
-        []
-      ]);
-    }
-
-    setQueueState(step.queue || []);
-    setCurrentStep(stepIndex);
-
-    setVisitedSoFar(prev => {
-      const updated = [...prev];
-      updated[componentIndex] = [
-        ...updated[componentIndex],
-        step.current
-      ];
-      return updated;
-    });
-
-    stepIndex++;
-
-  }, speed);
-};
-
-  const currentVisitedNode =
-  visitedOrder[currentStep]?.current;
+    return "bg-yellow-400 text-black hover:bg-yellow-300";
+  };
 
   return (
     <div
-      className="flex-1 bg-gray-950 relative cursor-pointer"
+      className="flex-1 bg-gray-950 relative cursor-pointer overflow-hidden"
       onClick={handleCanvasClick}
     >
+      {/* Info Panels Container */}
+<div className="absolute bottom-6 left-6 flex flex-col gap-4">
+  
+  {/* Visited / Distances */}
+  <div className="bg-gray-800/90 backdrop-blur-sm p-4 rounded-xl text-sm border border-gray-700 min-w-[220px] max-h-[200px] overflow-y-auto">
+    <div className="font-bold mb-2">
+      {algorithm === "dijkstra" ? "Distances" : "Visited"}
+    </div>
 
-      {/* Draw Edges */}
-      <svg className="absolute w-full h-full pointer-events-none">
-        {edges.map((edge, index) => {
-          const fromNode = nodes.find(n => n.id === edge.from);
-          const toNode = nodes.find(n => n.id === edge.to);
+    {algorithm === "dijkstra" ? (
+      Object.entries(distances).map(([id, dist]) => (
+        <div key={id} className="flex justify-between">
+          <span>Node {id}:</span>
+          <span>{dist === Infinity ? "∞" : dist}</span>
+        </div>
+      ))
+    ) : visitedSoFar.length === 0 ? (
+      <div className="text-gray-400">—</div>
+    ) : (
+      visitedSoFar.map((comp, i) => (
+        <div key={i}>{comp.join(" → ")}</div>
+      ))
+    )}
+  </div>
 
-          if (!fromNode || !toNode) return null;
+  {/* Stack / Queue */}
+  <div className="bg-gray-800/90 backdrop-blur-sm p-4 rounded-xl text-sm border border-gray-700 min-w-[220px] max-h-[200px] overflow-y-auto">
+    <div className="font-bold mb-2">
+      {algorithm === "dfs"
+        ? "Stack"
+        : algorithm === "dijkstra"
+        ? "Priority Queue"
+        : "Queue"}
+    </div>
 
-          return (
-            <line
-              key={index}
-              x1={fromNode.x}
-              y1={fromNode.y}
-              x2={toNode.x}
-              y2={toNode.y}
-              stroke="white"
-              strokeWidth="2"
-            />
-          );
-        })}
-      </svg>
+    <div className="text-gray-200">
+      {stackOrQueue.length === 0
+        ? "Empty"
+        : algorithm === "dijkstra"
+        ? stackOrQueue
+            .map((item) => `(${item.dist}, ${item.node})`)
+            .join("  ")
+        : stackOrQueue.join(" ← ")}
+    </div>
+  </div>
 
-      {/* Draw Nodes */}
+</div>
+
+      {/* Edges with weights */}
+<svg className="absolute inset-0 w-full h-full pointer-events-none">
+  {edges.map((edge, i) => {
+    const from = nodes.find((n) => n.id === edge.from);
+    const to = nodes.find((n) => n.id === edge.to);
+    if (!from || !to) return null;
+
+    return (
+      <g key={i}>
+        <line
+          x1={from.x}
+          y1={from.y}
+          x2={to.x}
+          y2={to.y}
+          stroke={
+  shortestPath.includes(edge.from) &&
+  shortestPath.includes(edge.to)
+    ? "#3b82f6"
+    : "#64748b"
+}
+          strokeWidth="2"
+        />
+        <text
+          x={(from.x + to.x) / 2}
+          y={(from.y + to.y) / 2 - 8}
+          fill="#94a3b8"
+          fontSize="12"
+          textAnchor="middle"
+        >
+          {edge.weight}
+        </text>
+      </g>
+    );
+  })}
+</svg>
+      {/* Nodes */}
       {nodes.map((node) => (
         <div
           key={node.id}
-          onClick={() => handleNodeClick(node.id)}
-          className={`absolute w-10 h-10 rounded-full flex items-center justify-center font-bold cursor-pointer
-            ${
-                currentVisitedNode === node.id
-                ? "bg-green-500 text-white"
-                : selectedNode === node.id
-                ? "bg-red-500"
-                : "bg-yellow-400 text-black"
-            }
-            `}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNodeClick(node.id);
+          }}
+          className={`absolute w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg transition-all duration-150 ${getNodeStyle(
+            node.id
+          )}`}
           style={{
-            left: node.x - 20,
-            top: node.y - 20
+            left: `${node.x - 24}px`,
+            top: `${node.y - 24}px`,
           }}
         >
           {node.id}
         </div>
       ))}
 
-      {/* Run Button */}
-      <button
-        onClick={runBFS}
-        className="absolute bottom-5 right-5 bg-blue-600 px-4 py-2 rounded"
-      >
-        Run BFS
-      </button>
+      {/* Controls */}
+      <div className="absolute bottom-6 right-6 flex flex-col gap-3 bg-gray-900/80 p-4 rounded-xl border border-gray-700">
+        <select
+          value={algorithm}
+          onChange={(e) => setAlgorithm(e.target.value)}
+          className="bg-gray-800 text-white px-3 py-2 rounded border border-gray-600"
+        >
+          <option value="bfs">BFS</option>
+          <option value="dfs">DFS</option>
+          <option value="dijkstra">Dijkstra</option>
+        </select>
 
         <button
-    onClick={runFullBFS}
-    className="absolute bottom-5 right-32 bg-purple-600 px-4 py-2 rounded"
-    >
-    Run Full BFS
-    </button>
+          onClick={startVisualization}
+          className="bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg"
+        >
+          Run
+        </button>
 
-      {/* Speed Control */}
-      <div className="absolute bottom-20 right-5 bg-gray-800 p-3 rounded text-sm">
-        <label>Speed (ms)</label>
-        <input
-          type="range"
-          min="200"
-          max="2000"
-          step="200"
-          value={speed}
-          onChange={(e) => setSpeed(Number(e.target.value))}
-          className="w-full"
-        />
-        <div>{speed} ms</div>
+        <button
+          onClick={clearGraph}
+          className="bg-red-600 hover:bg-red-700 px-5 py-2.5 rounded-lg"
+        >
+          Clear Graph
+        </button>
+
+        <div className="text-sm">
+          <label>Speed: {speed} ms</label>
+          <input
+            type="range"
+            min="200"
+            max="2000"
+            step="200"
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
       </div>
-
-      {/* Visited Display */}
-    <div className="absolute bottom-32 left-5 bg-gray-800 p-3 rounded text-sm">
-  <div className="font-bold mb-1">Visited:</div>
-
-  {visitedSoFar.length === 0 ? (
-    <div>None</div>
-  ) : (
-    visitedSoFar.map((component, index) => (
-      <div key={index}>
-        {component.join(" → ")}
-      </div>
-    ))
-  )}
-</div>
-
-      {/* Queue Display */}
-      <div className="absolute bottom-5 left-5 bg-gray-800 p-3 rounded text-sm">
-        <div className="font-bold mb-1">Queue:</div>
-        <div>{queueState.join(" , ") || "Empty"}</div>
-      </div>
-
     </div>
   );
 }
