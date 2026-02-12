@@ -3,11 +3,17 @@ import { bfsFullGraph } from "../algorithms/bfs";
 import { dfsFullGraph } from "../algorithms/dfs";
 import { dijkstra } from "../algorithms/dijkstra";
 
-export default function GraphCanvas() {
+export default function GraphCanvas({
+  algorithm,
+  speed,
+  runSignal,
+  resetSignal,
+  newEdgeWeight
+}) {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [newEdgeWeight, setNewEdgeWeight] = useState(1);
+  const [newNodeWeight, setNewNodeWeight] = useState(1);
 
   const [visitedOrder, setVisitedOrder] = useState([]);
   const [currentStep, setCurrentStep] = useState(-1);
@@ -15,17 +21,21 @@ export default function GraphCanvas() {
   const [visitedSoFar, setVisitedSoFar] = useState([]);
   const [distances, setDistances] = useState({});
   const [parents, setParents] = useState({});
-  const [algorithm, setAlgorithm] = useState("bfs");
-  const [speed, setSpeed] = useState(800);
 
   const intervalRef = useRef(null);
   const [shortestPath, setShortestPath] = useState([]);
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+useEffect(() => {
+  if (runSignal > 0) {
+    startVisualization();
+  }
+}, [runSignal]);
+
+useEffect(() => {
+  if (resetSignal > 0) {
+    clearGraph();
+  }
+}, [resetSignal]);
 
   const resetVisualization = () => {
     if (intervalRef.current) {
@@ -59,7 +69,10 @@ export default function GraphCanvas() {
         ? Math.max(...nodes.map((n) => n.id)) + 1
         : 0;
 
-    setNodes([...nodes, { id: newId, x, y }]);
+    setNodes([
+  ...nodes,
+  { id: newId, x, y, weight: newNodeWeight }
+]);
   };
 
   const handleNodeClick = (nodeId) => {
@@ -112,8 +125,11 @@ export default function GraphCanvas() {
   clearInterval(intervalRef.current);
   intervalRef.current = null;
 
-  setDistances(finalDist);
-  setParents(finalPrev);
+  if (stepIndex >= steps.length) {
+  clearInterval(intervalRef.current);
+  intervalRef.current = null;
+  return;
+}
 
   // 🔥 Build shortest path from selectedNode
   const path = [];
@@ -325,64 +341,33 @@ const animateDijkstra = (steps, finalDist, finalPrev) => {
   })}
 </svg>
       {/* Nodes */}
-      {nodes.map((node) => (
-        <div
-          key={node.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNodeClick(node.id);
-          }}
-          className={`absolute w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg transition-all duration-150 ${getNodeStyle(
-            node.id
-          )}`}
-          style={{
-            left: `${node.x - 24}px`,
-            top: `${node.y - 24}px`,
-          }}
-        >
-          {node.id}
-        </div>
-      ))}
+
+{nodes.map((node) => (
+  <div
+    key={node.id}
+    onClick={(e) => {
+      e.stopPropagation();
+      handleNodeClick(node.id);
+    }}
+    className={`absolute w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-150 ${getNodeStyle(
+      node.id
+    )}`}
+    style={{
+      left: `${node.x - 24}px`,
+      top: `${node.y - 24}px`,
+    }}
+  >
+    <div className="text-center leading-tight">
+      <div className="font-bold text-sm">{node.id}</div>
+      <div className="text-[10px] opacity-80">
+        w:{node.weight}
+      </div>
+    </div>
+  </div>
+))}
 
       {/* Controls */}
-      <div className="absolute bottom-6 right-6 flex flex-col gap-3 bg-gray-900/80 p-4 rounded-xl border border-gray-700">
-        <select
-          value={algorithm}
-          onChange={(e) => setAlgorithm(e.target.value)}
-          className="bg-gray-800 text-white px-3 py-2 rounded border border-gray-600"
-        >
-          <option value="bfs">BFS</option>
-          <option value="dfs">DFS</option>
-          <option value="dijkstra">Dijkstra</option>
-        </select>
-
-        <button
-          onClick={startVisualization}
-          className="bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg"
-        >
-          Run
-        </button>
-
-        <button
-          onClick={clearGraph}
-          className="bg-red-600 hover:bg-red-700 px-5 py-2.5 rounded-lg"
-        >
-          Clear Graph
-        </button>
-
-        <div className="text-sm">
-          <label>Speed: {speed} ms</label>
-          <input
-            type="range"
-            min="200"
-            max="2000"
-            step="200"
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            className="w-full"
-          />
-        </div>
-      </div>
+      
     </div>
   );
 }
