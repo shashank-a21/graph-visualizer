@@ -1,8 +1,8 @@
 # 🚀 Graph Algorithm Visualizer
 
-An interactive **Graph Algorithm Visualizer** built using **React (Vite) and Tailwind CSS** that demonstrates Breadth-First Search (BFS) traversal with real-time animation, queue visualization, and connected component detection.
+An interactive **Graph Algorithm Visualizer** built using **React (Vite)** and **Tailwind CSS** that demonstrates core graph algorithms with real-time animation and dynamic visualization.
 
-This project focuses on combining core data structures and algorithms with modern frontend architecture to create an educational visualization tool.
+This project combines fundamental **Data Structures & Algorithms** with modern frontend architecture to create a powerful educational and visualization tool.
 
 ---
 
@@ -11,40 +11,52 @@ This project focuses on combining core data structures and algorithms with moder
 ### 🔵 Dynamic Graph Creation
 - Click on the canvas to create nodes
 - Connect nodes by selecting two nodes
+- Adjustable **edge weights**
 - Graph stored internally using an adjacency list
-
-### ▶️ Single Source BFS
-- Executes Breadth-First Search from node `0`
-- Step-by-step animated traversal
-- Currently visiting node highlighted
-- Live queue visualization
-
-### 🌐 Full Graph BFS (Disconnected Graph Support)
-- Traverses all connected components
-- Automatically detects new components
-- Displays visited nodes grouped by component
-
-### ⚡ Adjustable Animation Speed
-- Real-time speed control
-- Smooth, state-driven animation updates
+- Full graph reset functionality
 
 ---
 
-## 🧠 Algorithms Implemented
+## 🔎 Algorithms Implemented
 
 ### 1️⃣ Breadth-First Search (BFS)
-
-- Uses Queue (FIFO)
-- Level-by-level traversal
-- Guarantees shortest path in unweighted graphs
+- Multi-component traversal
+- Automatic detection of disconnected components
+- Live **Queue visualization**
+- Step-by-step animated traversal
 - Time Complexity: **O(V + E)**
 
-### 2️⃣ Full Graph BFS
+---
 
-- Iterates over all nodes
-- Runs BFS on unvisited nodes
-- Detects connected components automatically
+### 2️⃣ Depth-First Search (DFS)
+- Multi-component traversal
+- Live **Stack visualization**
+- Recursive implementation
+- Animated full graph traversal
 - Time Complexity: **O(V + E)**
+
+---
+
+### 3️⃣ Dijkstra’s Algorithm (Weighted Graph)
+- Supports weighted edges
+- Live **Priority Queue visualization**
+- Real-time distance updates
+- Parent tracking for path reconstruction
+- Automatic shortest path highlighting (nodes + edges)
+- Time Complexity: **O((V + E) log V)**
+
+---
+
+## 🎨 Visualization Features
+
+- Current node highlighting
+- Stack / Queue / Priority Queue display panel
+- Component-wise visited grouping
+- Distance table for Dijkstra
+- Adjustable animation speed
+- Shortest path highlighting
+- Sidebar-based control panel
+- Full graph reset functionality
 
 ---
 
@@ -53,33 +65,35 @@ This project focuses on combining core data structures and algorithms with moder
 ```
 src/
  ├── components/
- │   ├── GraphCanvas.jsx   → UI & Animation Logic
- │   └── Controls.jsx      → Interaction Controls
+ │   ├── GraphCanvas.jsx   → Rendering & Animation Logic
+ │   └── Controls.jsx      → Sidebar Controls
  ├── algorithms/
- │   └── bfs.js            → Pure Graph Logic
- ├── App.jsx
+ │   ├── bfs.js
+ │   ├── dfs.js
+ │   └── dijkstra.js
+ ├── App.jsx               → Central State Management
  └── main.jsx
 ```
 
-### 🔹 Algorithm Layer
-- Contains pure traversal logic
-- Independent from UI
-- Easily extendable (DFS, Dijkstra)
+### Architecture Flow
 
-### 🔹 UI Layer
-- Handles animation using `setInterval`
-- State-driven rendering via React
-- Defensive checks to prevent runtime crashes
+Controls → App → GraphCanvas
+
+- `Controls` manages user interaction
+- `App` holds global state (algorithm, speed, signals)
+- `GraphCanvas` handles rendering and animation
+- Algorithm files contain pure logic independent from UI
 
 ---
 
 ## ⚙️ How It Works
 
 1. Graph is stored using an **Adjacency List**.
-2. BFS generates traversal steps.
+2. Selected algorithm generates traversal steps.
 3. Steps are stored in React state.
 4. `setInterval` animates each step.
 5. UI re-renders dynamically based on the current step.
+6. For Dijkstra, shortest path is reconstructed and highlighted after completion.
 
 ---
 
@@ -89,7 +103,7 @@ src/
 - Tailwind CSS
 - JavaScript (ES6+)
 - SVG for edge rendering
-- Git & GitHub for version control
+- Git & GitHub
 
 ---
 
@@ -114,23 +128,24 @@ http://localhost:5173
 
 - Graph Data Structures
 - Adjacency List Representation
-- Breadth-First Search
+- BFS & DFS Traversal
 - Connected Component Detection
-- Queue Implementation
+- Dijkstra’s Shortest Path Algorithm
+- Priority Queue Handling
 - React State Management
-- Controlled Animation
-- Defensive Programming
+- Controlled Animation Systems
+- UI / Logic Separation
 
 ---
 
 ## 🔮 Future Enhancements
 
-- Depth-First Search (DFS)
-- Dijkstra’s Algorithm (Weighted Graphs)
-- Start Node Selection
-- Directed Graph Support
-- Drag-and-Drop Nodes
-- Deployment with Live Demo
+- Directed / Undirected graph toggle
+- Manual step-by-step mode
+- Drag-and-drop nodes
+- Edge editing
+- Graph import/export
+- Deployment with live demo
 
 ---
 
